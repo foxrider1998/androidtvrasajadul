@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="osd_yellow">#FFEB3B</color>
+    <color name="osd_gold">#FFD700</color>
+    <color name="osd_bg_dark">#E6121212</color>
+    <color name="osd_bg_card">#D9000000</color>
+    <color name="badge_bg">#33FFFFFF</color>
+    <color name="accent_blue">#2196F3</color>
+    <color name="error_red">#FF5252</color>
+</resources>

@@ -1,0 +1,26 @@
+# Android build artifacts
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# Android generated build output
+app/build/
+
+# Kotlin
+*.class
+
+# Keystore files
+*.jks
+*.keystore
+
+# Proguard
+/proguard/
+
+# AAR files
+*.aar

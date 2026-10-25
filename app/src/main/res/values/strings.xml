@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TV Rasa Jadul</string>
+    <string name="osd_quality_label">480p SD • TV Digital</string>
+    <string name="loading_stream">Memuat Siaran...</string>
+    <string name="channel_not_found">Saluran %1$s Tidak Ditemukan</string>
+    <string name="digit_input_prompt">Ke Saluran: %1$s</string>
+    <string name="stream_error">TIDAK ADA SINYAL</string>
+    <string name="no_signal_title">TIDAK ADA SINYAL</string>
+    <string name="retrying_stream">Menghubungkan Ulang (%1$d/3)...</string>
+    <string name="try_backup_url">Mencoba Link Cadangan (%1$d/%2$d)...</string>
+    <string name="category_changed">Kategori: %1$s</string>
+</resources>

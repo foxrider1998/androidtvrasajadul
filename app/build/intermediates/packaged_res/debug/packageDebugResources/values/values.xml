@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent_blue">#2196F3</color>
+    <color name="badge_bg">#33FFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="error_red">#FF5252</color>
+    <color name="osd_bg_card">#D9000000</color>
+    <color name="osd_bg_dark">#E6121212</color>
+    <color name="osd_gold">#FFD700</color>
+    <color name="osd_yellow">#FFEB3B</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="app_name">TV Rasa Jadul</string>
+    <string name="category_changed">Kategori: %1$s</string>
+    <string name="channel_not_found">Saluran %1$s Tidak Ditemukan</string>
+    <string name="digit_input_prompt">Ke Saluran: %1$s</string>
+    <string name="loading_stream">Memuat Siaran...</string>
+    <string name="no_signal_title">TIDAK ADA SINYAL</string>
+    <string name="osd_quality_label">480p SD • TV Digital</string>
+    <string name="retrying_stream">Menghubungkan Ulang (%1$d/3)...</string>
+    <string name="stream_error">TIDAK ADA SINYAL</string>
+    <string name="try_backup_url">Mencoba Link Cadangan (%1$d/%2$d)...</string>
+    <style name="Theme.AndroidTvRasaJadul" parent="Theme.AppCompat.NoActionBar">
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">@color/black</item>
+        <item name="android:keepScreenOn">true</item>
+    </style>
+</resources>

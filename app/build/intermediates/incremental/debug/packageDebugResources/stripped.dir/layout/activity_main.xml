@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    android:keepScreenOn="true"
+    tools:context=".MainActivity">
+
+    <!-- ExoPlayer Video Surface View -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="false"
+        app:keep_content_on_player_reset="true"
+        app:resize_mode="fit"
+        app:show_buffering="never"
+        app:surface_type="surface_view"
+        app:use_controller="false" />
+
+    <!-- Animated Dynamic CRT TV Static Noise ("Gambar Semut Dinamis") -->
+    <com.example.androidtvrasajadul.ui.TvStaticNoiseView
+        android:id="@+id/tvStaticNoiseView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <!-- Center Loading / Error / "TIDAK ADA SINYAL" Overlay Container -->
+    <LinearLayout
+        android:id="@+id/statusContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_osd"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="28dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:indeterminateTint="@color/osd_gold" />
+
+        <TextView
+            android:id="@+id/tvStatusMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="@color/white"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            tools:text="TIDAK ADA SINYAL" />
+    </LinearLayout>
+
+    <!-- Top-Left High-Contrast Elderly OSD (On-Screen Display) -->
+    <LinearLayout
+        android:id="@+id/osdContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="32dp"
+        android:background="@drawable/bg_osd"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="28dp"
+        android:paddingBottom="20dp"
+        android:visibility="visible"
+        tools:visibility="visible">
+
+        <!-- Channel Number (Extremely Large & High Contrast) -->
+        <TextView
+            android:id="@+id/tvOsdChannelNumber"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:shadowColor="#80000000"
+            android:shadowDx="2"
+            android:shadowDy="2"
+            android:shadowRadius="4"
+            android:textColor="@color/osd_gold"
+            android:textSize="56sp"
+            android:textStyle="bold"
+            tools:text="CH 01" />
+
+        <!-- Channel Name & Category Badge -->
+        <TextView
+            android:id="@+id/tvOsdChannelName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:includeFontPadding="false"
+            android:shadowColor="#80000000"
+            android:shadowDx="2"
+            android:shadowDy="2"
+            android:shadowRadius="4"
+            android:textColor="@color/white"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            tools:text="RCTI • [Channel Indonesia]" />
+
+        <!-- Resolution & Source Badge -->
+        <TextView
+            android:id="@+id/tvOsdQuality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_status_badge"
+            android:text="@string/osd_quality_label"
+            android:textColor="#E0FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Large Prominent Category Switch Banner (When DPAD LEFT/RIGHT is pressed) -->
+    <LinearLayout
+        android:id="@+id/categoryBannerContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal|top"
+        android:layout_marginTop="32dp"
+        android:background="@drawable/bg_digit_input"
+        android:orientation="horizontal"
+        android:paddingStart="28dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="28dp"
+        android:paddingBottom="14dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/tvCategoryBanner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/osd_gold"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            tools:text="KATEGORI: PENGAJIAN GUS BAHA (YOUTUBE)" />
+    </LinearLayout>
+
+    <!-- Digit Input Overlay (When User Types Numbers 0-9 on Remote) -->
+    <LinearLayout
+        android:id="@+id/digitContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal|top"
+        android:layout_marginTop="100dp"
+        android:background="@drawable/bg_digit_input"
+        android:orientation="horizontal"
+        android:paddingStart="32dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="32dp"
+        android:paddingBottom="16dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/tvDigitInput"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/osd_gold"
+            android:textSize="40sp"
+            android:textStyle="bold"
+            tools:text="Ke Saluran: 31" />
+    </LinearLayout>
+
+</FrameLayout>
