@@ -18,6 +18,7 @@
         app:resize_mode="fit"
         app:show_buffering="never"
         app:surface_type="surface_view"
+        app:use_artwork="false"
         app:use_controller="false" />
 
     <!-- Animated Dynamic CRT TV Static Noise ("Gambar Semut Dinamis") -->

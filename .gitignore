@@ -24,3 +24,8 @@ app/build/
 
 # AAR files
 *.aar
+
+# Screenshots and temp testing files
+*.png
+*.m3u
+working_id_streams.txt

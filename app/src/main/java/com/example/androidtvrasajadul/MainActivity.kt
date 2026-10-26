@@ -106,6 +106,10 @@ class MainActivity : AppCompatActivity() {
     private val digitHandler = Handler(Looper.getMainLooper())
     private val digitRunnable = Runnable { commitDigitInput() }
 
+    // Retry Handler for stream errors
+    private val retryHandler = Handler(Looper.getMainLooper())
+    private val retryRunnable = Runnable { startPlaybackForCurrentUrl() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -166,7 +170,7 @@ class MainActivity : AppCompatActivity() {
         currentCategoryIndex = if (catIdx >= 0) catIdx else 0
 
         setupExoPlayer()
-        playChannel(currentChannelIndex, showStatic = false)
+        playChannel(currentChannelIndex)
     }
 
     /**
@@ -190,8 +194,8 @@ class MainActivity : AppCompatActivity() {
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(USER_AGENT)
             .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(8000)
-            .setReadTimeoutMs(8000)
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(15000)
             .setDefaultRequestProperties(
                 mapOf(
                     "Referer" to "https://www.google.com/",
@@ -203,11 +207,11 @@ class MainActivity : AppCompatActivity() {
         val dataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
-        // TrackSelector: Lock max streaming resolution to 480p (max 720p)
+        // TrackSelector: Allow up to 720p HD with fallback
         val trackSelector = DefaultTrackSelector(this).apply {
             parameters = buildUponParameters()
-                .setMaxVideoSize(854, 480)
-                .setPreferredVideoMimeType("video/avc")
+                .setMaxVideoSize(1280, 720)
+                .setExceedVideoConstraintsIfNecessary(true)
                 .build()
         }
 
@@ -231,25 +235,31 @@ class MainActivity : AppCompatActivity() {
         binding.playerView.player = player
 
         player?.addListener(object : Player.Listener {
+            override fun onRenderedFirstFrame() {
+                isChannelSwitching = false
+                hideStaticNoise()
+                binding.statusContainer.visibility = View.GONE
+            }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
                     Player.STATE_BUFFERING -> {
-                        // Gambar semut sudah aktif sejak tombol ditekan, cukup update status
-                        binding.statusContainer.visibility = View.VISIBLE
-                        binding.tvStatusMessage.text = getString(R.string.loading_stream)
+                        if (isChannelSwitching) {
+                            binding.statusContainer.visibility = View.VISIBLE
+                            binding.tvStatusMessage.text = getString(R.string.loading_stream)
+                            binding.progressBar.visibility = View.VISIBLE
+                        }
                     }
                     Player.STATE_READY -> {
-                        // Stream siap → hentikan gambar semut & sembunyikan status
-                        if (isChannelSwitching) {
-                            hideStaticNoise()
-                            isChannelSwitching = false
-                        }
+                        isChannelSwitching = false
+                        hideStaticNoise()
                         binding.statusContainer.visibility = View.GONE
                         retryCount = 0
                     }
                     Player.STATE_ENDED -> {
                         player?.seekTo(0)
                         player?.prepare()
+                        player?.playWhenReady = true
                     }
                     Player.STATE_IDLE -> {
                         // Idle state
@@ -270,16 +280,15 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Tampilkan gambar semut TV dinamis (CRT TV Static Noise).
-     * Dipanggil SETIAP KALI tombol ganti channel / ganti kategori ditekan.
+     * HANYA dipanggil saat TIDAK ADA SINYAL.
      */
     private fun showStaticNoise() {
         binding.tvStaticNoiseView.visibility = View.VISIBLE
         binding.tvStaticNoiseView.startNoise()
-        isChannelSwitching = true
     }
 
     /**
-     * Sembunyikan gambar semut TV (dipanggil saat STATE_READY atau secara manual).
+     * Sembunyikan gambar semut TV.
      */
     private fun hideStaticNoise() {
         binding.tvStaticNoiseView.stopNoise()
@@ -291,12 +300,7 @@ class MainActivity : AppCompatActivity() {
      * saat semua link gagal setelah MAX_RETRY_ATTEMPTS.
      */
     private fun showNoSignal() {
-        // Gambar semut tetap menyala
-        binding.tvStaticNoiseView.visibility = View.VISIBLE
-        binding.tvStaticNoiseView.startNoise()
-        isChannelSwitching = false // permanen, tidak auto-hilang
-
-        // Tampilkan overlay "TIDAK ADA SINYAL"
+        showStaticNoise()
         binding.statusContainer.visibility = View.VISIBLE
         binding.tvStatusMessage.text = getString(R.string.no_signal_title)
         binding.progressBar.visibility = View.GONE
@@ -308,14 +312,15 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Plays channel at the specified list index starting from primary URL (index 0).
-     * @param showStatic true = tampilkan gambar semut dulu (saat user tekan tombol)
      */
-    private fun playChannel(index: Int, showStatic: Boolean = true) {
+    private fun playChannel(index: Int) {
         if (channels.isEmpty() || index !in channels.indices) return
 
         currentChannelIndex = index
         currentUrlIndex = 0
         retryCount = 0
+        isChannelSwitching = true
+        retryHandler.removeCallbacks(retryRunnable)
 
         val channel = channels[currentChannelIndex]
         Log.d(TAG, "Playing channel ${channel.number}: ${channel.name} (Primary URL: ${channel.primaryUrl})")
@@ -326,12 +331,11 @@ class MainActivity : AppCompatActivity() {
         val catIdx = ChannelRepository.categories.indexOf(channel.category)
         if (catIdx >= 0) currentCategoryIndex = catIdx
 
-        if (showStatic) {
-            showStaticNoise()
-            // Sembunyikan status lama, reset progress bar
-            binding.progressBar.visibility = View.VISIBLE
-            binding.statusContainer.visibility = View.GONE
-        }
+        // Pastikan gambar semut hilang saat mulai memutar channel
+        hideStaticNoise()
+        binding.progressBar.visibility = View.VISIBLE
+        binding.statusContainer.visibility = View.VISIBLE
+        binding.tvStatusMessage.text = getString(R.string.loading_stream)
 
         startPlaybackForCurrentUrl()
         showOsd(OSD_DURATION_MS)
@@ -393,9 +397,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Multi-Link Fallback Mechanism:
-     * Jika URL saat ini gagal → coba URL cadangan berikutnya.
-     * Jika semua URL (hingga MAX_RETRY_ATTEMPTS) gagal → tampilkan "TIDAK ADA SINYAL".
+     * Multi-Link Fallback & 3x Retry Mechanism:
+     * Jika URL gagal → coba hubungkan ulang atau pindah ke URL cadangan hingga 3 kali.
+     * Jika setelah 3 kali retry masih gagal → tampilkan "TIDAK ADA SINYAL" dan gambar semut TV.
      */
     private fun handlePlaybackError() {
         if (channels.isEmpty() || currentChannelIndex !in channels.indices) return
@@ -404,18 +408,26 @@ class MainActivity : AppCompatActivity() {
         val totalUrls = channel.urls.size
         retryCount++
 
-        if (currentUrlIndex + 1 < totalUrls && retryCount <= MAX_RETRY_ATTEMPTS) {
-            currentUrlIndex++
-            Log.w(TAG, "Link gagal untuk ${channel.name}. Mencoba backup URL ${currentUrlIndex + 1}/$totalUrls...")
+        if (retryCount <= MAX_RETRY_ATTEMPTS) {
+            // Jika ada backup URL, beralih ke URL cadangan berikutnya
+            if (totalUrls > 1) {
+                currentUrlIndex = (currentUrlIndex + 1) % totalUrls
+                Log.w(TAG, "Link gagal untuk ${channel.name}. Mencoba cadangan ${currentUrlIndex + 1}/$totalUrls (Retry $retryCount/$MAX_RETRY_ATTEMPTS)...")
+            } else {
+                Log.w(TAG, "Link gagal untuk ${channel.name}. Menghubungkan ulang (Retry $retryCount/$MAX_RETRY_ATTEMPTS)...")
+            }
 
-            val backupMsg = getString(R.string.retrying_stream, retryCount, MAX_RETRY_ATTEMPTS)
+            val retryMsg = getString(R.string.retrying_stream, retryCount)
             binding.statusContainer.visibility = View.VISIBLE
-            binding.tvStatusMessage.text = backupMsg
+            binding.tvStatusMessage.text = retryMsg
             binding.progressBar.visibility = View.VISIBLE
 
-            startPlaybackForCurrentUrl()
+            // Beri jeda 1 detik agar tidak spam request
+            retryHandler.removeCallbacks(retryRunnable)
+            retryHandler.postDelayed(retryRunnable, 1000L)
         } else {
-            Log.e(TAG, "Semua $totalUrls link gagal untuk channel ${channel.name} setelah $retryCount percobaan.")
+            Log.e(TAG, "Semua link gagal untuk channel ${channel.name} setelah $retryCount percobaan.")
+            retryHandler.removeCallbacks(retryRunnable)
             showNoSignal()
             showOsdMessage(getString(R.string.no_signal_title))
         }
@@ -428,7 +440,7 @@ class MainActivity : AppCompatActivity() {
     private fun nextChannel() {
         if (channels.isEmpty()) return
         val nextIndex = (currentChannelIndex + 1) % channels.size
-        playChannel(nextIndex, showStatic = true)
+        playChannel(nextIndex)
     }
 
     private fun previousChannel() {
@@ -438,7 +450,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             currentChannelIndex - 1
         }
-        playChannel(prevIndex, showStatic = true)
+        playChannel(prevIndex)
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -468,7 +480,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Tampilkan gambar semut + banner emas, lalu putar channel pertama kategori.
+     * Tampilkan banner emas, lalu putar channel pertama kategori.
      */
     private fun switchToCurrentCategory() {
         val categoryName = ChannelRepository.categories[currentCategoryIndex]
@@ -476,12 +488,9 @@ class MainActivity : AppCompatActivity() {
         val totalCategories = ChannelRepository.categories.size
         val categoryNum = currentCategoryIndex + 1
 
-        // 1. Tampilkan gambar semut TV
-        showStaticNoise()
-        binding.progressBar.visibility = View.VISIBLE
-        binding.statusContainer.visibility = View.GONE
+        hideStaticNoise()
 
-        // 2. Tampilkan banner kategori emas
+        // Tampilkan banner kategori emas
         val bannerText = "KATEGORI [$categoryNum/$totalCategories]: $emoji $categoryName"
         binding.tvCategoryBanner.text = bannerText
         binding.categoryBannerContainer.visibility = View.VISIBLE
@@ -489,18 +498,11 @@ class MainActivity : AppCompatActivity() {
         categoryHandler.removeCallbacks(categoryRunnable)
         categoryHandler.postDelayed(categoryRunnable, CATEGORY_BANNER_MS)
 
-        // 3. Cari dan putar saluran pertama dari kategori ini
+        // Cari dan putar saluran pertama dari kategori ini
         val targetIndex = ChannelRepository.getFirstIndexOfCategory(channels, categoryName)
         if (targetIndex >= 0) {
-            // playChannel dengan showStatic=false karena kita sudah panggil showStaticNoise() manual
-            currentChannelIndex = targetIndex
-            currentUrlIndex = 0
-            retryCount = 0
-            preferenceManager.saveLastChannel(currentChannelIndex, channels[currentChannelIndex].number)
-            startPlaybackForCurrentUrl()
-            showOsd(OSD_DURATION_MS)
+            playChannel(targetIndex)
         } else {
-            // Kategori tidak ada channel yang cocok (tidak seharusnya terjadi)
             showNoSignal()
         }
     }
@@ -556,11 +558,6 @@ class MainActivity : AppCompatActivity() {
         binding.tvDigitInput.text = getString(R.string.digit_input_prompt, digitBuffer.toString())
         binding.digitContainer.visibility = View.VISIBLE
 
-        // Tampilkan gambar semut seketika saat pengguna mulai mengetik angka
-        if (!isChannelSwitching) {
-            showStaticNoise()
-        }
-
         digitHandler.removeCallbacks(digitRunnable)
         digitHandler.postDelayed(digitRunnable, DIGIT_TIMEOUT_MS)
     }
@@ -570,27 +567,12 @@ class MainActivity : AppCompatActivity() {
         digitBuffer.clear()
         binding.digitContainer.visibility = View.GONE
 
-        val targetNum = targetNumStr.toIntOrNull() ?: run {
-            hideStaticNoise()
-            return
-        }
+        val targetNum = targetNumStr.toIntOrNull() ?: return
         val foundIndex = channels.indexOfFirst { it.number == targetNum }
 
         if (foundIndex != -1) {
-            // Gambar semut sudah tampil sejak user tekan angka pertama
-            currentChannelIndex = foundIndex
-            currentUrlIndex = 0
-            retryCount = 0
-            val channel = channels[foundIndex]
-            preferenceManager.saveLastChannel(foundIndex, channel.number)
-            val catIdx = ChannelRepository.categories.indexOf(channel.category)
-            if (catIdx >= 0) currentCategoryIndex = catIdx
-            binding.progressBar.visibility = View.VISIBLE
-            binding.statusContainer.visibility = View.GONE
-            startPlaybackForCurrentUrl()
-            showOsd(OSD_DURATION_MS)
+            playChannel(foundIndex)
         } else {
-            hideStaticNoise()
             showOsdMessage(getString(R.string.channel_not_found, targetNumStr))
         }
     }
@@ -679,7 +661,7 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         if (player == null) {
             setupExoPlayer()
-            playChannel(currentChannelIndex, showStatic = false)
+            playChannel(currentChannelIndex)
         } else {
             player?.playWhenReady = true
         }
@@ -695,6 +677,7 @@ class MainActivity : AppCompatActivity() {
         osdHandler.removeCallbacks(osdRunnable)
         digitHandler.removeCallbacks(digitRunnable)
         categoryHandler.removeCallbacks(categoryRunnable)
+        retryHandler.removeCallbacks(retryRunnable)
         player?.release()
         player = null
     }
